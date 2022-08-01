@@ -1492,7 +1492,7 @@ pub mod pallet {
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
 		))]
-		pub fn join_delegators( // terrible name, it is not a club of delegators
+		pub fn join_delegators( // Not a great naming here, it is not a club of delegators. Each delegator chooses a single collator. Its not a pool, hence why name is confusing. 
 			origin: OriginFor<T>,
 			collator: <T::Lookup as StaticLookup>::Source,
 			amount: BalanceOf<T>,
@@ -1519,22 +1519,39 @@ pub mod pallet {
 			let acc = ensure_signed(origin)?;
 			
 			// check we are not already following the the specific delegators
-			ensure!()
+			ensure!(
+				// read follower storage and reading if a delegator contains acc, else throw the error SomeoneIsFollowingYou
+				!Followers::<T>::get(&delegator).contains(&acc),
+				Error::<T>::AreadyFollowing
+			)	
 
-			// check the specific delegator is not following us else we can create an infinite loop of undelegating...
-			ensure!()
+			// // check if anyone is following us. 
+			// ensure!(
+			// 	// read follower storage and check that the key returns an empty Vec, else throw the error SomeoneIsFollowingYou
+			// 	Followers::<T>::get(&acc) == Vec::new(),
+			// 	Error::<T>::SomeoneIsFollowingYou
+			// 
+
+			// check the specific delegator is not following us else it can lead to an infinite loop of undelegating... 
+			ensure!(
+				!Followers::<T>::get(&acc).contains(&delegator),
+				Error::<T>::DelegatorIsFollowingYou
+			)
 
 			// check that the target delegator is not following anyone else. 
 			// This is because if the primary delegator unstakes, then it will cause
 			// a problem down the chain of follows. So currently only one level of follows is allowed. 
-			ensure!()
+			// ensure!(
+			// 	!Followers::<T>::get(&delegator) == Followers::<T>::new(),
+			// 	Error::<T>::Delegator
+			// )
 
-			// check if the origin is being followed, they are not allowed to follow if this is the case. 
-			ensure!()
-
-			
+			// ^^^ Actually, he can follow anyone. 
 			
 			// create an entry in the storage
+			Followers::<T>::mutate(&acc, | vec |) { 
+				let tuple = (acc.clone(), amount.clone())
+				followers.push(tuple);
 			
 			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
 			// Self::internal_join_delegators(acc, , amount);	
@@ -1579,7 +1596,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
 			
-			// check we are being followed
+			// check if we are being followed
 			ensure!()
 
 			// check the specific delegator is not following us else we can create an infinite loop of undelegating...
@@ -1594,6 +1611,9 @@ pub mod pallet {
 			ensure!()
 			
 			// create an entry in the storage
+			// create a mutate 
+
+		
 			
 			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
 			// Self::internal_join_delegators(acc, , amount);	
