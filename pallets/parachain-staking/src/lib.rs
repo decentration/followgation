@@ -1547,11 +1547,43 @@ pub mod pallet {
 			// )
 
 			// ^^^ Actually, he can follow anyone. 
+
+			// we have a delegation list, we need to create an empty Vec, then we are going to loop over the delegations, 
+			// and for each del we are going to have a recipient (delegating to) and 
+			// the amount we are delegating. We need to compute the percentage of this amount based on the total. 
+			// Now we have the %, we use it to compute what is going to be to staked. 
+			// Then we create a tuple that contains the recipitent account id and the computed amount that will be staked. 
+			// Push the tuple into the created Vec.
+			// We do this for every entry in the delegation in the Vec. 
+			// when the loop is done we do a mutate and concat the tuples in to the vec.
+
+			let amount = // from parameters
+			let total = T::DelegatorState.get(&acc).total; 
+			let delegations = T::DelegatorState.get(delegator_address).delegation // vec
+			for (stake in delegations) {
+
+			let to = stake.to
+			let staked_amount = stake.amount
+			let percentage = staked_amount * 100 / total
+			let amount_to_stake = amount * percentage
+			
+			join_delegators(you, to, amount_to_stake)
+
+			}
+
+			// let total = T::DelegatorState.get(&acc).total;
+			// let delegations = T::DelegatorState.get(delegator_address).delegation;
+			// // delegation is a vec containing a 'Stake' structure
+			// // so for each Stake:
+			// let to = stake.to;
+			// let amount = stake.amount;
 			
 			// create an entry in the storage
 			Followers::<T>::mutate(&acc, | vec |) { 
 				let tuple = (acc.clone(), amount.clone())
 				followers.push(tuple);
+
+				
 			
 			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
 			// Self::internal_join_delegators(acc, , amount);	
@@ -1559,6 +1591,8 @@ pub mod pallet {
 			
 			// emit event Followed
 		} 
+
+ 
 
 		/// Unfollow
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators(
