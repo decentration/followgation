@@ -1492,18 +1492,21 @@ pub mod pallet {
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
 		))]
-		pub fn join_delegators(
+		pub fn join_delegators( // terrible name, it is not a club of delegators
 			origin: OriginFor<T>,
 			collator: <T::Lookup as StaticLookup>::Source,
 			amount: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
 			let collator = T::Lookup::lookup(collator)?;
-			Self::internal_join_delegators(acc, collator, amount);	
+			Self::internal_join_delegators(acc, collator, amount)?;	
+
+			// for each follower, call internal_join_delegators(their_acc, collator, their_amount)
+			//
 
 		}
 
-
+		/// Follow
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
@@ -1521,6 +1524,16 @@ pub mod pallet {
 			// check the specific delegator is not following us else we can create an infinite loop of undelegating...
 			ensure!()
 
+			// check that the target delegator is not following anyone else. 
+			// This is because if the primary delegator unstakes, then it will cause
+			// a problem down the chain of follows. So currently only one level of follows is allowed. 
+			ensure!()
+
+			// check if the origin is being followed, they are not allowed to follow if this is the case. 
+			ensure!()
+
+			
+			
 			// create an entry in the storage
 			
 			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
@@ -1530,10 +1543,7 @@ pub mod pallet {
 			// emit event Followed
 		} 
 
-		// unfollow:
-        //    -if there s a delegation running, we undelegate
-		// -we remove entry from storage
-		
+		/// Unfollow
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators(
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
@@ -1551,14 +1561,46 @@ pub mod pallet {
 			// if there s a delegation running, we undelegate
 			ensure!()
 
-			
-
 			// check that the delegator is delegating. If they are delegating, then the follower undelegates. 
 
 			// we remove entry from storage
-			//Self::internal_join_delegators(acc, , amount);	
 			
-			// emit event Followed		} 
+			// emit event Followed		
+		}
+		
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
+			T::MaxTopCandidates::get(),
+			T::MaxDelegatorsPerCollator::get()
+		))]
+		pub fn force_unfollow_me(
+			origin: OriginFor<T>,
+			delegator: T::AccountId,
+			amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			let acc = ensure_signed(origin)?;
+			
+			// check we are being followed
+			ensure!()
+
+			// check the specific delegator is not following us else we can create an infinite loop of undelegating...
+			ensure!()
+
+			// check that the target delegator is not following anyone else. 
+			// This is because if the primary delegator unstakes, then it will cause
+			// a problem down the chain of follows. So currently only one level of follows is allowed. 
+			ensure!()
+
+			// check if the origin is being followed, they are not allowed to follow if this is the case. 
+			ensure!()
+			
+			// create an entry in the storage
+			
+			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
+			// Self::internal_join_delegators(acc, , amount);	
+			
+			
+			// emit event Followed
+		} 
 
 
 		/// Delegate another collator's candidate by staking some funds and
@@ -1744,23 +1786,14 @@ pub mod pallet {
 		))]
 		pub fn leave_delegators(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
-			let delegator = DelegatorState::<T>::get(&acc).ok_or(Error::<T>::DelegatorNotFound)?;
-			let num_delegations: u32 = delegator.delegations.len().saturated_into();
-			for stake in delegator.delegations.into_iter() {
-				Self::delegator_leaves_collator(acc.clone(), stake.owner.clone())?;
-			}
+			
+			Self::internal_leave_delegators(acc)?;
 
-			// *** No Fail beyond this point ***
+			// for each follower, call internal_leave_delegators(their_acc)...
 
-			DelegatorState::<T>::remove(&acc);
-
-			Self::deposit_event(Event::DelegatorLeft(acc, delegator.total));
-			Ok(Some(<T as pallet::Config>::WeightInfo::leave_delegators(
-				num_delegations,
-				T::MaxDelegatorsPerCollator::get(),
-			))
-			.into())
+	
 		}
+
 
 		/// Terminates an ongoing delegation for a given collator candidate.
 		///
@@ -2755,24 +2788,8 @@ pub mod pallet {
 		}
 
 
-		/// Calculates the network rewards per block with the current data and
-		/// issues these rewards to the network. The imbalance will be handled
-		/// in `on_initialize` by adding it to the free balance of
-		/// `NetworkRewardBeneficiary`.
-		///
-		/// The expected rewards are the product of
-		///  * the current total maximum collator rewards
-		///  * and the configured NetworkRewardRate
-		///
-		/// `col_reward_rate_per_block * col_max_stake * max_num_of_collators *
-		/// NetworkRewardRate`
-		///
-		/// # <weight>
-		/// Weight: O(1)
-		/// - Reads: InflationConfig, MaxCollatorCandidateStake,
-		///   MaxSelectedCandidates
-		/// # </weight>	
-		fn internal_join_delegators(acc: T::AccountId, collator: T::AccountId, amount: Balance<T>) {
+		/// Logic from public function of join_delegators
+		fn internal_join_delegators(acc: T::AccountId, collator: T::AccountId, amount: Balance<T>) -> DispatchResultWithPostInfo {
 
 			// check balances
 			ensure!(
@@ -2861,6 +2878,10 @@ pub mod pallet {
 			CandidatePool::<T>::insert(&collator, state);
 			DelegatorState::<T>::insert(&acc, delegator_state);
 			<LastDelegation<T>>::insert(&acc, delegation_counter);
+
+			// For each follower, read the storage
+
+			// For each follower, 
 			
 			// Followers::<T>::mutate(&acc, | followers | { 
 			// 	followers.push(&acc);
@@ -2873,6 +2894,27 @@ pub mod pallet {
 			Self::deposit_event(Event::Delegation(acc, amount, collator, new_total));
 			Ok(Some(<T as pallet::Config>::WeightInfo::join_delegators(
 				n,
+				T::MaxDelegatorsPerCollator::get(),
+			))
+			.into())
+		}
+
+		// internal_leave_delegators
+		fn internal_leave_delegators(acc: T::AccountId) -> DispatchResultWithPostInfo { 
+
+			let delegator = DelegatorState::<T>::get(&acc).ok_or(Error::<T>::DelegatorNotFound)?;
+			let num_delegations: u32 = delegator.delegations.len().saturated_into();
+			for stake in delegator.delegations.into_iter() {
+				Self::delegator_leaves_collator(acc.clone(), stake.owner.clone())?;
+			}
+
+			// *** No Fail beyond this point ***
+
+			DelegatorState::<T>::remove(&acc);
+
+			Self::deposit_event(Event::DelegatorLeft(acc, delegator.total));
+			Ok(Some(<T as pallet::Config>::WeightInfo::leave_delegators(
+				num_delegations,
 				T::MaxDelegatorsPerCollator::get(),
 			))
 			.into())
