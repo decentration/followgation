@@ -593,6 +593,24 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
+	/// Followers is a storage map which tracks the followers of specific delegators.
+	/// `T::AccountId` is the delegator in question
+	/// `Vec<>` is a Vec of followers, and within it is a tuple containing the account ID of a follower and the balance they are staking.
+	///
+	/// It maps from an account to its delegation details.
+	#[pallet::storage]
+	#[pallet::unbounded] // unbounded because there is no bound to our Vec and we arent bounding the vec. 
+	#[pallet::getter(fn followers)]
+	pub(crate) type Followers<T: Config> = StorageMap<
+		_,
+		Twox64Concat,
+		T::AccountId,	
+		Vec<(T::AccountId, BalanceOf<T>)>,
+		ValueQuery, // Return the default value if there is nothing.  
+	>;
+
+	
+
 	/// The staking information for a candidate.
 	///
 	/// It maps from an account to its information.
@@ -1481,104 +1499,67 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
 			let collator = T::Lookup::lookup(collator)?;
+			Self::internal_join_delegators(acc, collator, amount);	
 
-			// check balance
-			ensure!(
-				pallet_balances::Pallet::<T>::free_balance(acc.clone()) >= amount.into(),
-				pallet_balances::Error::<T>::InsufficientBalance
-			);
-
-			// first delegation
-			ensure!(DelegatorState::<T>::get(&acc).is_none(), Error::<T>::AlreadyDelegating);
-			ensure!(amount >= T::MinDelegatorStake::get(), Error::<T>::NomStakeBelowMin);
-
-			// cannot be a collator candidate and delegator with same AccountId
-			ensure!(Self::is_active_candidate(&acc).is_none(), Error::<T>::CandidateExists);
-			ensure!(
-				Unstaking::<T>::get(&acc).len().saturated_into::<u32>() < T::MaxUnstakeRequests::get(),
-				Error::<T>::CannotJoinBeforeUnlocking
-			);
-			// cannot delegate if number of delegations in this round exceeds
-			// MaxDelegationsPerRound
-			let delegation_counter = Self::get_delegation_counter(&acc)?;
-
-			// prepare update of collator state
-			let mut state = CandidatePool::<T>::get(&collator).ok_or(Error::<T>::CandidateNotFound)?;
-			let num_delegations_pre_insertion: u32 = state.delegators.len().saturated_into();
-
-			ensure!(!state.is_leaving(), Error::<T>::CannotDelegateIfLeaving);
-			let delegation = Stake {
-				owner: acc.clone(),
-				amount,
-			};
-
-			// attempt to insert delegator and check for uniqueness
-			// NOTE: excess is handled below because we support replacing a delegator with
-			// fewer stake
-			let insert_delegator = state
-				.delegators
-				// we handle TooManyDelegators error below in do_update_delegator
-				.try_insert(delegation.clone())
-				.unwrap_or(true);
-			// should never fail but let's be safe
-			ensure!(insert_delegator, Error::<T>::DelegatorExists);
-
-			// can only throw if MaxCollatorsPerDelegator is set to 0 which should never
-			// occur in practice, even if the delegator rewards are set to 0
-			let delegator_state = Delegator::try_new(collator.clone(), amount)
-				.map_err(|_| Error::<T>::MaxCollatorsPerDelegatorExceeded)?;
-
-			let CandidateOf::<T, _> {
-				stake: old_stake,
-				total: old_total,
-				..
-			} = state;
-
-			// update state and potentially prepare kicking a delegator with less staked
-			// amount
-			let (state, maybe_kicked_delegator) = if num_delegations_pre_insertion == T::MaxDelegatorsPerCollator::get()
-			{
-				Self::do_update_delegator(delegation, state)?
-			} else {
-				state.total = state.total.saturating_add(amount);
-				(state, None)
-			};
-			let new_total = state.total;
-
-			// *** No Fail except during increase_lock beyond this point ***
-
-			// lock stake
-			Self::increase_lock(&acc, amount, BalanceOf::<T>::zero())?;
-
-			// update top candidates and total amount at stake
-			let n = if state.is_active() {
-				Self::update_top_candidates(
-					collator.clone(),
-					old_stake,
-					// safe because total >= stake
-					old_total - old_stake,
-					state.stake,
-					state.total - state.stake,
-				)
-			} else {
-				0u32
-			};
-
-			// update states
-			CandidatePool::<T>::insert(&collator, state);
-			DelegatorState::<T>::insert(&acc, delegator_state);
-			<LastDelegation<T>>::insert(&acc, delegation_counter);
-
-			// update or clear storage of potentially kicked delegator
-			Self::update_kicked_delegator_storage(maybe_kicked_delegator);
-
-			Self::deposit_event(Event::Delegation(acc, amount, collator, new_total));
-			Ok(Some(<T as pallet::Config>::WeightInfo::join_delegators(
-				n,
-				T::MaxDelegatorsPerCollator::get(),
-			))
-			.into())
 		}
+
+
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
+			T::MaxTopCandidates::get(),
+			T::MaxDelegatorsPerCollator::get()
+		))]
+		pub fn follow(
+			origin: OriginFor<T>,
+			delegator: T::AccountId,
+			amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			let acc = ensure_signed(origin)?;
+			
+			// check we are not already following the the specific delegators
+			ensure!()
+
+			// check the specific delegator is not following us else we can create an infinite loop of undelegating...
+			ensure!()
+
+			// create an entry in the storage
+			
+			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
+			// Self::internal_join_delegators(acc, , amount);	
+			
+			
+			// emit event Followed
+		} 
+
+		// unfollow:
+        //    -if there s a delegation running, we undelegate
+		// -we remove entry from storage
+		
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators(
+			T::MaxTopCandidates::get(),
+			T::MaxDelegatorsPerCollator::get()
+		))]
+		pub fn unfollow(
+			origin: OriginFor<T>,
+			delegator: T::AccountId,
+			amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			let acc = ensure_signed(origin)?;
+			
+			// check we are already following the the specific delegators
+			ensure!()
+
+			// if there s a delegation running, we undelegate
+			ensure!()
+
+			
+
+			// check that the delegator is delegating. If they are delegating, then the follower undelegates. 
+
+			// we remove entry from storage
+			//Self::internal_join_delegators(acc, , amount);	
+			
+			// emit event Followed		} 
+
 
 		/// Delegate another collator's candidate by staking some funds and
 		/// increasing the pallet's as well as the collator's total stake.
@@ -2773,6 +2754,130 @@ pub mod pallet {
 			T::Currency::issue(network_reward)
 		}
 
+
+		/// Calculates the network rewards per block with the current data and
+		/// issues these rewards to the network. The imbalance will be handled
+		/// in `on_initialize` by adding it to the free balance of
+		/// `NetworkRewardBeneficiary`.
+		///
+		/// The expected rewards are the product of
+		///  * the current total maximum collator rewards
+		///  * and the configured NetworkRewardRate
+		///
+		/// `col_reward_rate_per_block * col_max_stake * max_num_of_collators *
+		/// NetworkRewardRate`
+		///
+		/// # <weight>
+		/// Weight: O(1)
+		/// - Reads: InflationConfig, MaxCollatorCandidateStake,
+		///   MaxSelectedCandidates
+		/// # </weight>	
+		fn internal_join_delegators(acc: T::AccountId, collator: T::AccountId, amount: Balance<T>) {
+
+			// check balances
+			ensure!(
+				pallet_balances::Pallet::<T>::free_balance(acc.clone()) >= amount.into(),
+				pallet_balances::Error::<T>::InsufficientBalance
+			);
+
+			// first delegation
+			ensure!(DelegatorState::<T>::get(&acc).is_none(), Error::<T>::AlreadyDelegating);
+			ensure!(amount >= T::MinDelegatorStake::get(), Error::<T>::NomStakeBelowMin);			
+
+
+			// cannot be a collator candidate and delegator with same AccountId
+			ensure!(Self::is_active_candidate(&acc).is_none(), Error::<T>::CandidateExists);
+			ensure!(
+				Unstaking::<T>::get(&acc).len().saturated_into::<u32>() < T::MaxUnstakeRequests::get(),
+				Error::<T>::CannotJoinBeforeUnlocking
+			);
+			// cannot delegate if number of delegations in this round exceeds
+			// MaxDelegationsPerRound
+			let delegation_counter = Self::get_delegation_counter(&acc)?;
+	
+			// prepare update of collator state
+			let mut state = CandidatePool::<T>::get(&collator).ok_or(Error::<T>::CandidateNotFound)?;
+			let num_delegations_pre_insertion: u32 = state.delegators.len().saturated_into();
+	
+			ensure!(!state.is_leaving(), Error::<T>::CannotDelegateIfLeaving);
+			let delegation = Stake {
+				owner: acc.clone(),
+				amount,
+			};
+	
+			// attempt to insert delegator and check for uniqueness
+			// NOTE: excess is handled below because we support replacing a delegator with
+			// fewer stake
+			let insert_delegator = state
+				.delegators
+				// we handle TooManyDelegators error below in do_update_delegator
+				.try_insert(delegation.clone())
+				.unwrap_or(true);
+			// should never fail but let's be safe
+			ensure!(insert_delegator, Error::<T>::DelegatorExists);
+	
+			// can only throw if MaxCollatorsPerDelegator is set to 0 which should never
+			// occur in practice, even if the delegator rewards are set to 0
+			let delegator_state = Delegator::try_new(collator.clone(), amount)
+				.map_err(|_| Error::<T>::MaxCollatorsPerDelegatorExceeded)?;
+	
+			let CandidateOf::<T, _> {
+				stake: old_stake,
+				total: old_total,
+				..
+			} = state;
+	
+			// update state and potentially prepare kicking a delegator with less staked
+			// amount
+			let (state, maybe_kicked_delegator) = if num_delegations_pre_insertion == T::MaxDelegatorsPerCollator::get()
+			{
+				Self::do_update_delegator(delegation, state)?
+			} else {
+				state.total = state.total.saturating_add(amount);
+				(state, None)
+			};
+			let new_total = state.total;
+	
+			// *** No Fail except during increase_lock beyond this point ***
+	
+			// lock stake
+			Self::increase_lock(&acc, amount, BalanceOf::<T>::zero())?;
+	
+			// update top candidates and total amount at stake
+			let n = if state.is_active() {
+				Self::update_top_candidates(
+					collator.clone(),
+					old_stake,
+					// safe because total >= stake
+					old_total - old_stake,
+					state.stake,
+					state.total - state.stake,
+				)
+			} else {
+				0u32
+			};
+	
+			// update states
+			CandidatePool::<T>::insert(&collator, state);
+			DelegatorState::<T>::insert(&acc, delegator_state);
+			<LastDelegation<T>>::insert(&acc, delegation_counter);
+			
+			// Followers::<T>::mutate(&acc, | followers | { 
+			// 	followers.push(&acc);
+
+			// } );
+	
+			// update or clear storage of potentially kicked delegator
+			Self::update_kicked_delegator_storage(maybe_kicked_delegator);
+	
+			Self::deposit_event(Event::Delegation(acc, amount, collator, new_total));
+			Ok(Some(<T as pallet::Config>::WeightInfo::join_delegators(
+				n,
+				T::MaxDelegatorsPerCollator::get(),
+			))
+			.into())
+		}
+
 		// [Post-launch TODO] Think about Collator stake or total stake?
 		// /// Attempts to add a collator candidate to the set of collator
 		// /// candidates which already reached its maximum size. On success,
@@ -2870,6 +2975,9 @@ pub mod pallet {
 			// we too are not caring.
 		}
 	}
+
+
+	
 
 	impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 		/// 1. A new session starts.
