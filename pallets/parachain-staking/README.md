@@ -28,4 +28,11 @@ _"In all projects, you are free to use everything that you have learned from Sub
 
 _"To the contrary, when needed, make a Trait that is supposed to deliver some functionality, and do a mock implementation of it, to abstract away components that you want to interact with and are not readily available in FRAME."_
 
+## Improvements
+
+Given that this is a minimal viable product, there are many ways this can improve:
+
+- If the delegator being followed is kicked, do we also kick the follower, or do we leave the follower where they are and detach from the collator?
+
+- 
 
