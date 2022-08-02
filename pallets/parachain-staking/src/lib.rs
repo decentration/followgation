@@ -173,6 +173,16 @@ use frame_support::pallet;
 pub use crate::{default_weights::WeightInfo, pallet::*};
 use types::ReplacedDelegator;
 
+#[macro_export]
+macro_rules! unwrap_or_return {
+	( $e:expr, $f:expr ) => {
+		match $e {
+			Some(x) => x,
+			None => return $f,
+		}
+	};
+}
+
 #[pallet]
 pub mod pallet {
 	use super::*;
@@ -193,7 +203,7 @@ pub mod pallet {
 	use pallet_session::ShouldEndSession;
 	use scale_info::TypeInfo;
 	use sp_runtime::{
-		traits::{Convert, One, SaturatedConversion, Saturating, StaticLookup, Zero},
+		traits::{Convert, One, SaturatedConversion, Saturating, StaticLookup, Zero}, 
 		Permill, Perquintill,
 	};
 	use sp_staking::SessionIndex;
@@ -533,7 +543,11 @@ pub mod pallet {
 		/// value\]
 		BlocksPerRoundSet(SessionIndex, T::BlockNumber, T::BlockNumber, T::BlockNumber),
 		// The follower is no longer following the delegator
-		FollowerRemoved(T::AccountId, T::AccountId),
+		// \[follower, delegator unfollowed\]
+		Unfollowed(T::AccountId, T::AccountId),
+		// The follower is added to the list 
+		// \[follower, delegator, amount to stake \]
+		Followed(T::AccountId, T::AccountId, BalanceOf<T>)
 	}
 
 	#[pallet::hooks]
@@ -1505,7 +1519,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
 			let collator = T::Lookup::lookup(collator)?;
-			Self::internal_join_delegators(acc, collator, amount)?;	
+			Self::internal_join_delegators(acc, collator, amount)
 
 			// I moved the logic here to fn internal_join_delegators(their_acc, collator, their_amount)
 			
@@ -1524,15 +1538,15 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			delegator: T::AccountId,
 			amount: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let acc = ensure_signed(origin)?;
 			
 			// check we are not already following the the specific delegators
 			ensure!(
 				// read follower storage and read if a delegator contains acc, else throw the error AlreadyFollowing
-				!Followers::<T>::get(&delegator).contains(&acc),
-				Error::<T>::AreadyFollowing
-			)	
+				!Followers::<T>::get(&delegator).contains(&(acc.clone(), amount)),
+				Error::<T>::AlreadyFollowing
+			);
 
 			// // check if anyone is following us. 
 			// ensure!(
@@ -1542,10 +1556,10 @@ pub mod pallet {
 			// 
 
 			// check the specific delegator is not following us else it could lead to an infinite loop of undelegating... 
-			ensure!(
-				!Followers::<T>::get(&acc).contains(&delegator),
-				Error::<T>::DelegatorIsFollowingYou
-			)
+			//ensure!(
+			//	!Followers::<T>::get(&acc).contains(&delegator),
+			//	Error::<T>::DelegatorIsFollowingYou
+			//);
 
 			// check that the target delegator is not following anyone else. 
 			// This is because if the primary delegator unstakes, then it will cause
@@ -1568,18 +1582,16 @@ pub mod pallet {
 			// We do this for every entry in the delegation in the Vec. 
 			// when the loop is done we do a mutate and concat the tuples in to the vec.
 
-			let amount = &amount;// from parameters
-			let total = T::DelegatorState.get(&acc).total; 
-			let delegations = T::DelegatorState.get(delegator_address).delegation // vec
-			for (stake in delegations) {
 
-			let to = stake.to;
-			let staked_amount = stake.amount;
-			let percentage = staked_amount * 100 / total;
-			let amount_to_stake = amount * percentage;
-			
-			join_delegators(you, to, amount_to_stake);
-
+			let total = unwrap_or_return!(DelegatorState::<T>::get(&delegator), Err(Error::<T>::DelegationNotFound.into())).total; 
+			let delegations = unwrap_or_return!(DelegatorState::<T>::get(&delegator), Err(Error::<T>::DelegationNotFound.into())).delegations; // vec
+			for stake in delegations {
+				let to = stake.owner;
+				let staked_amount = stake.amount;
+				let percentage = staked_amount.saturating_mul(100u32.into()) / total;
+				let amount_to_stake = amount * percentage;
+				
+				Self::internal_join_delegators(acc.clone(), to, amount_to_stake);
 			}
 
 			// let total = T::DelegatorState.get(&acc).total;
@@ -1590,17 +1602,18 @@ pub mod pallet {
 			// let amount = stake.amount;
 			
 			// create an entry in the storage
-			Followers::<T>::mutate(&acc, | vec | ) { 
-				let tuple = (acc.clone(), amount.clone())
-				followers.push(tuple);
-
-				
+			Followers::<T>::mutate(&acc, | vec | { 
+				let tuple = (acc.clone(), amount.clone());
+				vec.push(tuple);
+			});
 			
 			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
 			// Self::internal_join_delegators(acc, , amount);	
 			
 			
 			// emit event Followed
+			Self::deposit_event(Event::Followed(acc, delegator, amount));	
+			Ok(())
 		} 
 
  
@@ -1613,43 +1626,43 @@ pub mod pallet {
 		pub fn unfollow(
 			origin: OriginFor<T>,
 			delegator: T::AccountId,
-			amount: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
+			amount: BalanceOf<T>
+		) -> DispatchResult {
 			let acc = ensure_signed(origin)?;
 			
 			// check we are already following the the specific delegators
 			ensure!(
-
 				// read follower storage and read if a delegator contains acc, else throw the error SomeoneIsFollowingYou
-				Followers::<T>::get(&delegator).contains(&acc),
+				Followers::<T>::get(&delegator).contains(&(acc.clone(), amount)),
 				Error::<T>::NotFollowing
-
-			)
+			);
 
 			// if there's a delegation running, we undelegate. Though maybe we should keep delegating and just unfollow (hmm...)
 
 			//check if user has a delegator state, if not then we are not delegatng. 
-			let mut delegation = DelegatorState::<T>::get(&acc).ok_or(Error::<T>::NotYetDelegating)?;	
-			Self::internal_leave_delegators(&acc);
-
-
-
-			ensure!(
-			)
+		
  
 
-			// we remove entry from storage
-			Followers::<T>::get(&delegator).remove(&acc);
+			// remove entry from storage
+			// Followers::<T>::get(&delegator).remove(&acc);
+			// retain allows us to find the tuple and remove if it is false 
+			Followers::<T>::mutate(&delegator, |vec| {
+				vec.retain(|(follower_acc, follower_amount)| {
+					(*follower_acc == acc) && (*follower_amount == amount)
+				})
+			});
 			
 			
 			// emit event Followed	
-			Self::deposit_event(Event::FollowerRemoved(delegator, amount));	
+			Self::deposit_event(Event::Unfollowed(acc, delegator));
+			Ok(())
 		}
 		
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
+		/*#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
 		))]
+		*/
 
 
 		// pub fn force_unfollow_me(
@@ -1870,8 +1883,25 @@ pub mod pallet {
 		))]
 		pub fn leave_delegators(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
+
+			let delegator = DelegatorState::<T>::get(&acc).ok_or(Error::<T>::DelegatorNotFound)?;
+			let num_delegations: u32 = delegator.delegations.len().saturated_into();
+			for stake in delegator.delegations.into_iter() {
+				Self::delegator_leaves_collator(acc.clone(), stake.owner.clone())?;
+			}
+
+			// *** No Fail beyond this point ***
+
+			DelegatorState::<T>::remove(&acc);
+
+			Self::deposit_event(Event::DelegatorLeft(acc, delegator.total));
+			Ok(Some(<T as pallet::Config>::WeightInfo::leave_delegators(
+				num_delegations,
+				T::MaxDelegatorsPerCollator::get(),
+			))
+			.into())
 			
-			Self::internal_leave_delegators(acc)?;
+			// Self::internal_leave_delegators(acc)
 
 			// for each follower, call internal_leave_delegators(their_acc)...
 
@@ -1910,8 +1940,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collator: <T::Lookup as StaticLookup>::Source,
 		) -> DispatchResultWithPostInfo {
-			let collator = T::Lookup::lookup(collator)?;
+			
 			let delegator = ensure_signed(origin)?;
+
+			let collator = T::Lookup::lookup(collator)?;
 
 			// *** No Fail except during delegator_revokes_collator beyond this point ***
 
@@ -2544,6 +2576,8 @@ pub mod pallet {
 					state.total,
 				));
 
+				Self::internal_revoke_delegation(); //accountId, 
+
 				Ok((state, Some(kicked_delegator)))
 			} else {
 				Ok((state, None))
@@ -2873,7 +2907,7 @@ pub mod pallet {
 
 
 		/// Logic from public function of join_delegators
-		fn internal_join_delegators(acc: T::AccountId, collator: T::AccountId, amount: Balance<T>) -> DispatchResultWithPostInfo {
+		fn internal_join_delegators(acc: T::AccountId, collator: T::AccountId, amount: BalanceOf<T>) -> DispatchResultWithPostInfo {
 
 			// check balances
 			ensure!(
@@ -2984,24 +3018,9 @@ pub mod pallet {
 		}
 
 		// internal_leave_delegators taken from the public function and made as a private function to be accessible. 
-		fn internal_leave_delegators(acc: T::AccountId) -> DispatchResultWithPostInfo { 
+		fn internal_revoke_delegation(acc: T::AccountId) -> DispatchResultWithPostInfo { 
 
-			let delegator = DelegatorState::<T>::get(&acc).ok_or(Error::<T>::DelegatorNotFound)?;
-			let num_delegations: u32 = delegator.delegations.len().saturated_into();
-			for stake in delegator.delegations.into_iter() {
-				Self::delegator_leaves_collator(acc.clone(), stake.owner.clone())?;
-			}
-
-			// *** No Fail beyond this point ***
-
-			DelegatorState::<T>::remove(&acc);
-
-			Self::deposit_event(Event::DelegatorLeft(acc, delegator.total));
-			Ok(Some(<T as pallet::Config>::WeightInfo::leave_delegators(
-				num_delegations,
-				T::MaxDelegatorsPerCollator::get(),
-			))
-			.into())
+		
 		}
 
 		// [Post-launch TODO] Think about Collator stake or total stake?

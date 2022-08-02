@@ -34,5 +34,5 @@ Given that this is a minimal viable product, there are many ways this can improv
 
 - If the delegator being followed is kicked, do we also kick the follower, or do we leave the follower where they are and detach from the collator?
 
-- 
+- RPC module
 

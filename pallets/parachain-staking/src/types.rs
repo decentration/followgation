@@ -34,6 +34,7 @@ use sp_std::{
 
 use crate::{set::OrderedSet, Config};
 
+
 /// A struct represented an amount of staked funds.
 ///
 /// The stake has a destination account (to which the stake is directed) and an
