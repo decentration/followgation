@@ -440,6 +440,10 @@ pub mod pallet {
 		StakeNotFound,
 		/// Cannot unlock when Unstaked is empty.
 		UnstakingIsEmpty,
+		// Already following the delegator 
+		AlreadyFollowing,
+		// You can't unfollow() because you arent following the delegator.
+		NotFollowing,
 	}
 
 	#[pallet::event]
@@ -528,6 +532,8 @@ pub mod pallet {
 		/// \[round number, first block in the current round, old value, new
 		/// value\]
 		BlocksPerRoundSet(SessionIndex, T::BlockNumber, T::BlockNumber, T::BlockNumber),
+		// The follower is no longer following the delegator
+		FollowerRemoved(T::AccountId, T::AccountId),
 	}
 
 	#[pallet::hooks]
@@ -1492,7 +1498,7 @@ pub mod pallet {
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
 		))]
-		pub fn join_delegators( // Not a great naming here, it is not a club of delegators. Each delegator chooses a single collator. Its not a pool, hence why name is confusing. 
+		pub fn join_delegators( // Slightly confusing naming here, it is not a club of delegators. Each delegator chooses a single collator. Its not a pool, hence why name is confusing. 
 			origin: OriginFor<T>,
 			collator: <T::Lookup as StaticLookup>::Source,
 			amount: BalanceOf<T>,
@@ -1520,7 +1526,7 @@ pub mod pallet {
 			
 			// check we are not already following the the specific delegators
 			ensure!(
-				// read follower storage and reading if a delegator contains acc, else throw the error SomeoneIsFollowingYou
+				// read follower storage and read if a delegator contains acc, else throw the error AlreadyFollowing
 				!Followers::<T>::get(&delegator).contains(&acc),
 				Error::<T>::AreadyFollowing
 			)	
@@ -1532,7 +1538,7 @@ pub mod pallet {
 			// 	Error::<T>::SomeoneIsFollowingYou
 			// 
 
-			// check the specific delegator is not following us else it can lead to an infinite loop of undelegating... 
+			// check the specific delegator is not following us else it could lead to an infinite loop of undelegating... 
 			ensure!(
 				!Followers::<T>::get(&acc).contains(&delegator),
 				Error::<T>::DelegatorIsFollowingYou
@@ -1546,7 +1552,9 @@ pub mod pallet {
 			// 	Error::<T>::Delegator
 			// )
 
-			// ^^^ Actually, he can follow anyone. 
+			// ^^^ Actually, he can follow anyone.
+			
+		
 
 			// we have a delegation list, we need to create an empty Vec, then we are going to loop over the delegations, 
 			// and for each del we are going to have a recipient (delegating to) and 
@@ -1557,17 +1565,17 @@ pub mod pallet {
 			// We do this for every entry in the delegation in the Vec. 
 			// when the loop is done we do a mutate and concat the tuples in to the vec.
 
-			let amount = // from parameters
+			let amount = &amount;// from parameters
 			let total = T::DelegatorState.get(&acc).total; 
 			let delegations = T::DelegatorState.get(delegator_address).delegation // vec
 			for (stake in delegations) {
 
-			let to = stake.to
-			let staked_amount = stake.amount
-			let percentage = staked_amount * 100 / total
-			let amount_to_stake = amount * percentage
+			let to = stake.to;
+			let staked_amount = stake.amount;
+			let percentage = staked_amount * 100 / total;
+			let amount_to_stake = amount * percentage;
 			
-			join_delegators(you, to, amount_to_stake)
+			join_delegators(you, to, amount_to_stake);
 
 			}
 
@@ -1579,7 +1587,7 @@ pub mod pallet {
 			// let amount = stake.amount;
 			
 			// create an entry in the storage
-			Followers::<T>::mutate(&acc, | vec |) { 
+			Followers::<T>::mutate(&acc, | vec | ) { 
 				let tuple = (acc.clone(), amount.clone())
 				followers.push(tuple);
 
@@ -1607,16 +1615,32 @@ pub mod pallet {
 			let acc = ensure_signed(origin)?;
 			
 			// check we are already following the the specific delegators
-			ensure!()
+			ensure!(
 
-			// if there s a delegation running, we undelegate
-			ensure!()
+				// read follower storage and read if a delegator contains acc, else throw the error SomeoneIsFollowingYou
+				Followers::<T>::get(&delegator).contains(&acc),
+				Error::<T>::NotFollowing
 
-			// check that the delegator is delegating. If they are delegating, then the follower undelegates. 
+			)
+
+			// if there's a delegation running, we undelegate. Though maybe we should keep delegating and just unfollow (hmm...)
+
+			//check if user has a delegator state, if not then we are not delegatng. 
+			let mut delegation = DelegatorState::<T>::get(&acc).ok_or(Error::<T>::NotYetDelegating)?;	
+			Self::internal_leave_delegators(&acc);
+
+
+
+			ensure!(
+			)
+ 
 
 			// we remove entry from storage
+			Followers::<T>::get(&delegator).remove(&acc);
 			
-			// emit event Followed		
+			
+			// emit event Followed	
+			Self::deposit_event(Event::FollowerRemoved(delegator, amount));	
 		}
 		
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
@@ -2953,7 +2977,7 @@ pub mod pallet {
 			.into())
 		}
 
-		// internal_leave_delegators
+		// internal_leave_delegators taken from the public function and made as a private function to be accessible. 
 		fn internal_leave_delegators(acc: T::AccountId) -> DispatchResultWithPostInfo { 
 
 			let delegator = DelegatorState::<T>::get(&acc).ok_or(Error::<T>::DelegatorNotFound)?;
