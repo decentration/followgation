@@ -1507,12 +1507,15 @@ pub mod pallet {
 			let collator = T::Lookup::lookup(collator)?;
 			Self::internal_join_delegators(acc, collator, amount)?;	
 
-			// for each follower, call internal_join_delegators(their_acc, collator, their_amount)
-			//
+			// I moved the logic here to fn internal_join_delegators(their_acc, collator, their_amount)
+			
 
 		}
 
-		/// Follow
+		/// Follow public function. 
+		/// Users can make an extrinsic call to choose a delegator that will automatically select and stake on their behalf. 
+		///
+		/// 
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
@@ -1647,38 +1650,40 @@ pub mod pallet {
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
 		))]
-		pub fn force_unfollow_me(
-			origin: OriginFor<T>,
-			delegator: T::AccountId,
-			amount: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
-			let acc = ensure_signed(origin)?;
+
+
+		// pub fn force_unfollow_me(
+		// 	origin: OriginFor<T>,
+		// 	delegator: T::AccountId,
+		// 	amount: BalanceOf<T>,
+		// ) -> DispatchResultWithPostInfo {
+		// 	let acc = ensure_signed(origin)?;
 			
-			// check if we are being followed
-			ensure!()
+		// 	// check if we are being followed
+		// 	ensure!()
 
-			// check the specific delegator is not following us else we can create an infinite loop of undelegating...
-			ensure!()
+		// 	// check the specific delegator is not following us else we can create an infinite loop of undelegating...
+		// 	ensure!()
 
-			// check that the target delegator is not following anyone else. 
-			// This is because if the primary delegator unstakes, then it will cause
-			// a problem down the chain of follows. So currently only one level of follows is allowed. 
-			ensure!()
+		// 	// check that the target delegator is not following anyone else. 
+		// 	// This is because if the primary delegator unstakes, then it will cause
+		// 	// a problem down the chain of follows. So currently only one level of follows is allowed. 
+		// 	ensure!()
 
-			// check if the origin is being followed, they are not allowed to follow if this is the case. 
-			ensure!()
+		// 	// check if the origin is being followed, they are not allowed to follow if this is the case. 
+		// 	ensure!()
 			
-			// create an entry in the storage
-			// create a mutate 
+		// 	// create an entry in the storage
+		// 	// create a mutate 
 
 		
 			
-			// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
-			// Self::internal_join_delegators(acc, , amount);	
+		// 	// check that the delegator is delegating. If they are delegating, then the follower also delegates. 
+		// 	// Self::internal_join_delegators(acc, , amount);	
 			
 			
-			// emit event Followed
-		} 
+		// 	// emit event Followed
+		// } 
 
 
 		/// Delegate another collator's candidate by staking some funds and
@@ -1724,6 +1729,7 @@ pub mod pallet {
 		//
 		// NOTE: We can't benchmark this extrinsic until we have increased `MaxCollatorsPerDelegator` by at least 1,
 		// thus we use the closest weight we can get.
+
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators(
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
@@ -1765,7 +1771,7 @@ pub mod pallet {
 			// with fewer stake
 			ensure!(
 				delegator
-					.add_delegation(Stake {
+					.add_delegation(Stake { // cant find add_delegation anywhere else?
 						owner: collator.clone(),
 						amount
 					})

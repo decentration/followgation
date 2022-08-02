@@ -1,13 +1,7 @@
-# KILT-node &middot; [![tests](https://gitlab.com/kiltprotocol/mashnet-node/badges/develop/pipeline.svg)](https://gitlab.com/kiltprotocol/mashnet-node/-/commits/develop)
+# Followgator-Kilt-node (Polkadot Blockchain Academy)
 
+Welcome to the Followgator node. 
 
-<p align="center">
-  <img src="/.maintain/media/kilt.png">
-</p>
+We have customised Kilt's parachain-staking Limited Delegated Proof-of-Stake (LDPoS) `parachain-staking` pallet to have the added feature of a user being able to follow a delegator of their choice so that the selected delegator can select the candidate on their behalf. 
 
-The KILT blockchain is the heart and soul behind KILT Protocol.
-It provides the immutable transaction ledger for the various KILT processes in the network.
-
-The nodes use Parity Substrate as the underlying blockchain technology stack, extended with our custom functionality for handling DIDs, CTypes, Attestations and Delegations.
-
-## [The KILT developer documentation](https://dev.kilt.io)
+You can explanation of my approach to delivering a production ready product in the parachain-staking pallet README.
