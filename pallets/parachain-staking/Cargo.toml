@@ -1,5 +1,5 @@
 [package]
-authors = ["KILT <info@kilt.io>"]
+authors = ["KILT <info@kilt.io>", "Ramsey(Decentration <ramsey@decentration.org>"]
 description = "Parachain parachain-staking pallet for collator delegation and selection as well as reward distribution"
 edition = "2021"
 name = "parachain-staking"

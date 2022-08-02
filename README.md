@@ -1,7 +1,15 @@
-# Followgator-Kilt-node (Polkadot Blockchain Academy)
+# The Lazy Gator (Polkadot Blockchain Academy)
 
-Welcome to the Followgator node. 
+The Lazy Gator is a pallet that leverages Limited Delegated Proof of Stake, but allows users to follow delegators. ("LLDPoS" if you like).
 
-We have customised Kilt's parachain-staking Limited Delegated Proof-of-Stake (LDPoS) `parachain-staking` pallet to have the added feature of a user being able to follow a delegator of their choice so that the selected delegator can select the candidate on their behalf. 
+I have customised Kilt's parachain-staking Limited Delegated Proof-of-Stake (LDPoS) `pallets/parachain-staking` pallet to have the added feature of a user being able to follow a delegator of their, choice so that the selected delegator can select the candidate on their behalf. 
 
-You can explanation of my approach to delivering a production ready product in the parachain-staking pallet README.
+You can see the explanation of my approach to delivering a production ready product in the `pallets/parachain-staking` pallet README.
+
+Forked from [Kilt](https://github.com/KILTprotocol/kilt-node/)
+
+## Quick start
+
+`cargo build --release`
+
+./target/release --dev

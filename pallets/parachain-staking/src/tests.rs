@@ -3926,3 +3926,220 @@ fn update_total_stake_no_collator_changes() {
 			);
 		});
 }
+
+
+// test for follow 
+#[test]
+fn follow() {
+	ExtBuilder::default()
+		.with_balances(vec![
+			(1, 200),
+			(2, 200),
+			(3, 200),
+			(4, 200),
+			(5, 200),
+			(6, 200),
+			(7, 200),
+			(8, 200),
+			(10, 200),
+		])
+		.with_collators(vec![(1, 10), (2, 20), (3, 30), (4, 40)])
+		.with_delegators(vec![(6, 2, 50), (7, 3, 55), (8, 4, 55)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(StakePallet::follow(Origin::signed(10), 5, 100));
+
+			assert_eq!(
+				StakePallet::followers(5),
+				vec!{(10, 100)}
+			);
+			assert_noop!(
+				StakePallet::follow(Origin::signed(10), 5, 100),
+				Error::<Test>::AlreadyFollowing
+			);
+		});
+}
+
+#[test]
+fn unfollow() {
+	ExtBuilder::default()
+		.with_balances(vec![
+			(1, 200),
+			(2, 200),
+			(3, 200),
+			(4, 200),
+			(5, 200),
+			(6, 200),
+			(7, 200),
+			(8, 200),
+			(10, 200),
+		])
+		.with_collators(vec![(1, 10), (2, 20), (3, 30), (4, 40)])
+		.with_delegators(vec![(6, 2, 50), (7, 3, 55), (8, 4, 55)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(StakePallet::follow(Origin::signed(10), 5, 100));
+
+			assert_eq!(
+				StakePallet::followers(5),
+				vec!{(10, 100)}
+			);
+			assert_ok!(StakePallet::unfollow(Origin::signed(10), 5, 100));
+
+			assert_eq!(
+				StakePallet::followers(5),
+				vec!{}
+			);
+
+			assert_noop!(
+				StakePallet::unfollow(Origin::signed(3), 5, 100),
+				Error::<Test>::NotFollowing
+			);
+		});
+}
+
+#[test]
+//follow with a delegator already delegating 
+fn follow_with_delegation() {
+	ExtBuilder::default()
+		.with_balances(vec![
+			(1, 200),
+			(2, 200),
+			(3, 200),
+			(4, 200),
+			(5, 200),
+			(6, 200),
+			(7, 200),
+			(8, 200),
+			(10, 200000),
+		])
+		.with_collators(vec![(1, 10), (2, 20), (3, 30), (4, 40)])
+		.with_delegators(vec![(5, 1, 50), (6, 2, 50), (7, 3, 55), (8, 4, 55)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(StakePallet::follow(Origin::signed(10), 5, 100)); // 10 follows 5(id) with 100
+
+			assert_eq!(
+				StakePallet::followers(5),
+				vec!{(10, 100)}
+			);
+			assert_eq!(
+				StakePallet::delegator_state(10).unwrap(),
+				Delegator::<AccountId, Balance, <Test as Config>::MaxCollatorsPerDelegator> {
+					delegations: OrderedSet::from(
+						vec![StakeOf::<Test> { owner: 1, amount: 100 }].try_into().unwrap()
+					),
+					total: 100
+				}
+			);
+		});
+}
+
+#[test]
+
+//follow with a delegator already delegating 
+fn follow_with_undelegation() {
+	ExtBuilder::default()
+		.with_balances(vec![
+			(1, 200),
+			(2, 200),
+			(3, 200),
+			(4, 200),
+			(5, 200),
+			(6, 200),
+			(7, 200),
+			(8, 200),
+			(10, 200000),
+		])
+		.with_collators(vec![(1, 10), (2, 20), (3, 30), (4, 40)])
+		.with_delegators(vec![(5, 1, 50), (6, 2, 50), (7, 3, 55), (8, 4, 55)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(StakePallet::follow(Origin::signed(10), 5, 100)); // 10 follows 5(id) with 100
+
+			assert_eq!(
+				StakePallet::followers(5),
+				vec!{(10, 100)}
+			);
+			assert_eq!(
+				StakePallet::delegator_state(10).unwrap(),
+				Delegator::<AccountId, Balance, <Test as Config>::MaxCollatorsPerDelegator> {
+					delegations: OrderedSet::from(
+						vec![StakeOf::<Test> { owner: 1, amount: 100 }].try_into().unwrap()
+					),
+					total: 100
+				}
+			);
+
+			assert_ok!(StakePallet::revoke_delegation(Origin::signed(5), 1)); // 5id collating to 1 
+
+			assert_eq!(
+				StakePallet::delegator_state(10),
+				None
+			);
+		});
+}
+
+#[test]
+fn already_following() {
+	ExtBuilder::default()
+		.with_balances(vec![
+			(1, 200),
+			(2, 200),
+			(3, 200),
+			(4, 200),
+			(5, 200),
+			(6, 200),
+			(7, 200),
+			(8, 200),
+			(10, 200),
+		])
+		.with_collators(vec![(1, 10), (2, 20), (3, 30), (4, 40)])
+		.with_delegators(vec![(5, 2, 50), (6, 2, 50), (7, 3, 55), (8, 4, 55)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(StakePallet::follow(Origin::signed(10), 5, 100));
+
+			assert_eq!(
+				StakePallet::followers(5),
+				vec!{(10, 100)}
+			);
+
+			assert_noop!(
+				StakePallet::follow(Origin::signed(10), 5, 100),
+				Error::<Test>::AlreadyFollowing
+			);
+		});
+}
+
+#[test]
+fn not_following() {
+	ExtBuilder::default()
+		.with_balances(vec![
+			(1, 200),
+			(2, 200),
+			(3, 200),
+			(4, 200),
+			(5, 200),
+			(6, 200),
+			(7, 200),
+			(8, 200),
+			(10, 200),
+		])
+		.with_collators(vec![(1, 10), (2, 20), (3, 30), (4, 40)])
+		.with_delegators(vec![(5, 2, 50), (6, 2, 50), (7, 3, 55), (8, 4, 55)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(StakePallet::follow(Origin::signed(10), 5, 100));
+
+			assert_eq!(
+				StakePallet::followers(5),
+				vec!{(10, 100)}
+			);
+
+			assert_noop!(
+				StakePallet::unfollow(Origin::signed(3), 5, 100),
+				Error::<Test>::NotFollowing
+			);
+		});
+}

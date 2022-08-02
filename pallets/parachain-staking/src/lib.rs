@@ -1538,7 +1538,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			delegator: T::AccountId,
 			amount: BalanceOf<T>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
 			
 			// check we are not already following the the specific delegators
@@ -1582,16 +1582,19 @@ pub mod pallet {
 			// We do this for every entry in the delegation in the Vec. 
 			// when the loop is done we do a mutate and concat the tuples in to the vec.
 
+			if let Some(state) = DelegatorState::<T>::get(&delegator) {
+				let total = state.total;
+				let delegations = state.delegations; // vec
+				for stake in delegations {
+					//return Err(Error::<T>::AlreadyFollowing.into());
+					let to = stake.owner;
+					let staked_amount = stake.amount;
+					let percentage = staked_amount.saturating_mul(100u32.into()) / total;
+					let amount_to_stake = amount * (percentage / 100u32.into());
+					
+					let _ = Self::internal_join_delegators(acc.clone(), to, amount_to_stake);
 
-			let total = unwrap_or_return!(DelegatorState::<T>::get(&delegator), Err(Error::<T>::DelegationNotFound.into())).total; 
-			let delegations = unwrap_or_return!(DelegatorState::<T>::get(&delegator), Err(Error::<T>::DelegationNotFound.into())).delegations; // vec
-			for stake in delegations {
-				let to = stake.owner;
-				let staked_amount = stake.amount;
-				let percentage = staked_amount.saturating_mul(100u32.into()) / total;
-				let amount_to_stake = amount * percentage;
-				
-				Self::internal_join_delegators(acc.clone(), to, amount_to_stake);
+				}
 			}
 
 			// let total = T::DelegatorState.get(&acc).total;
@@ -1602,7 +1605,7 @@ pub mod pallet {
 			// let amount = stake.amount;
 			
 			// create an entry in the storage
-			Followers::<T>::mutate(&acc, | vec | { 
+			Followers::<T>::mutate(&delegator, | vec | { 
 				let tuple = (acc.clone(), amount.clone());
 				vec.push(tuple);
 			});
@@ -1613,7 +1616,7 @@ pub mod pallet {
 			
 			// emit event Followed
 			Self::deposit_event(Event::Followed(acc, delegator, amount));	
-			Ok(())
+			Ok(None.into())
 		} 
 
  
@@ -1648,7 +1651,7 @@ pub mod pallet {
 			// retain allows us to find the tuple and remove if it is false 
 			Followers::<T>::mutate(&delegator, |vec| {
 				vec.retain(|(follower_acc, follower_amount)| {
-					(*follower_acc == acc) && (*follower_amount == amount)
+					!((*follower_acc == acc) && (*follower_amount == amount))
 				})
 			});
 			
@@ -1892,7 +1895,18 @@ pub mod pallet {
 
 			// *** No Fail beyond this point ***
 
+			// update follows of delegators as well
+			let followers = Followers::<T>::get(acc.clone());
+			for (account, _) in followers { // take every follower
+				if let Some(state) = DelegatorState::<T>::get(&acc) {
+					for stake in state.delegations { // take every collator the delegator delegated to
+						let _ = Self::internal_revoke_delegation(account.clone(), stake.owner.clone()); //and remove the followers's delegations to each collator
+					}
+				}
+			}
+
 			DelegatorState::<T>::remove(&acc);
+
 
 			Self::deposit_event(Event::DelegatorLeft(acc, delegator.total));
 			Ok(Some(<T as pallet::Config>::WeightInfo::leave_delegators(
@@ -1940,20 +1954,19 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collator: <T::Lookup as StaticLookup>::Source,
 		) -> DispatchResultWithPostInfo {
+
+			let collator = T::Lookup::lookup(collator)?;
 			
 			let delegator = ensure_signed(origin)?;
 
-			let collator = T::Lookup::lookup(collator)?;
+			let res = Self::internal_revoke_delegation(delegator.clone(), collator.clone());
+		
+			let followers = Followers::<T>::get(delegator);
+			for (account, _) in followers {
+				let _ = Self::internal_revoke_delegation(account, collator.clone());
+			}
 
-			// *** No Fail except during delegator_revokes_collator beyond this point ***
-
-			let num_delegations = Self::delegator_revokes_collator(delegator, collator)?;
-
-			Ok(Some(<T as pallet::Config>::WeightInfo::revoke_delegation(
-				num_delegations,
-				T::MaxDelegatorsPerCollator::get(),
-			))
-			.into())
+			res
 		}
 
 		/// Increase the stake for delegating a collator candidate.
@@ -2570,13 +2583,17 @@ pub mod pallet {
 				Self::deposit_event(Event::DelegationReplaced(
 					stake.owner,
 					stake.amount,
-					stake_to_remove.owner,
+					stake_to_remove.owner.clone(),
 					stake_to_remove.amount,
 					state.id.clone(),
 					state.total,
 				));
-
-				Self::internal_revoke_delegation(); //accountId, 
+				let collator = state.id.clone();
+				let delegator = stake_to_remove.owner.clone();
+				let followers = Followers::<T>::get(delegator);
+				for (account, _) in followers {
+					let _ = Self::internal_revoke_delegation(account, collator.clone()); //accountId, 
+				}
 
 				Ok((state, Some(kicked_delegator)))
 			} else {
@@ -3018,8 +3035,16 @@ pub mod pallet {
 		}
 
 		// internal_leave_delegators taken from the public function and made as a private function to be accessible. 
-		fn internal_revoke_delegation(acc: T::AccountId) -> DispatchResultWithPostInfo { 
+		fn internal_revoke_delegation(delegator: T::AccountId, collator: T::AccountId) -> DispatchResultWithPostInfo { 
+			// *** No Fail except during delegator_revokes_collator beyond this point ***
 
+			let num_delegations = Self::delegator_revokes_collator(delegator, collator)?;
+
+			Ok(Some(<T as pallet::Config>::WeightInfo::revoke_delegation(
+				num_delegations,
+				T::MaxDelegatorsPerCollator::get(),
+			))
+			.into())
 		
 		}
 

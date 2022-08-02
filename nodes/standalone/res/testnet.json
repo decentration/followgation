@@ -1,6 +1,6 @@
 {
-  "name": "KILT Testnet",
-  "id": "kilt_testnet",
+  "name": "Lazy Gator 🐊",
+  "id": "lazy_gator_testnet",
   "chainType": "Live",
   "bootNodes": [
     "/dns4/bootnode-alice.kilt.io/tcp/30333/p2p/12D3KooWPuXafPUY8E8zo7m4GuWkgj9ByfsanrNUznZShBgJrW4A",

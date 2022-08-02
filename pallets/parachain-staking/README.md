@@ -1,20 +1,29 @@
-# Followgator Pallet (Polkadot Blockchain Academy)
+# Lazy Gator Pallet 🐊 (Polkadot Blockchain Academy)
 
-This pallet enables users to follow delegators who stake their funds with collators. The followers can select how much they wish to stake, but the delegator that they follow selects the candidate. 
+This pallet enables users to follow delegators who stake their funds with collators. The followers can select how much they wish to stake, but the delegator that they follow selects the candidate (collator) for them. 
 
-The pallet leverages Kilt's parachain-staking [pallet](https://github.com/KILTprotocol/kilt-node/tree/develop/pallets/parachain-staking), but with the added `follow` features.
+The pallet customises Kilt's parachain-staking [pallet](https://github.com/decentration/followgator/tree/followgation/pallets/parachain-staking), but with the added `follow` features.
+
+Also can be found at `pallets/parachain-staking`.
 
 
 ## My Approach 
 The key factor in this assignment is that we have only a few days to deliver something that is "as close to production ready as possible" and display a strong level of competence about Substrate and Rust. 
 
-The idea is to add a "follow a delegator" feature. There are various ways I can approach this. One of them is by adding extra parameters to the current Storage Map for DelegatorState. But then i will have to update the code in various places to implement it. So I will be creating a new StorageMap called FollowerState, which keeps track of the 
+The idea is to add a "follow a delegator" feature, for the lazy folk, on top of Limited Delegated Proof of Stake, which I am interested to implement for Kabocha parachain. 
 
-I can make use of the current code by refactoring it. For example i can take the logic from the pub fn join_delegator() and move into a private function so that it can be used elsewhere. 
+The public methods I have added are:
 
-Secondly, I will create a StorageMap which stores a Vec of followers, so that there can be a public function to follow and unfollow from the delegator; and importantly, if the delegator unstakes from a collator then the followers will also be unstaked. 
+`pub fn follow()`
+
+`pub fn unfollow()`
+
+
 
 ## The Assignment 
+
+What stood out for me was `"As close to production ready as possible"`
+
 This assignment completes this section:
 
 _Basic Direct Delegation Proof of Stake system:_
@@ -28,11 +37,29 @@ _"In all projects, you are free to use everything that you have learned from Sub
 
 _"To the contrary, when needed, make a Trait that is supposed to deliver some functionality, and do a mock implementation of it, to abstract away components that you want to interact with and are not readily available in FRAME."_
 
+
+## Tests
+
+```console
+Running unittests src/lib.rs (target/debug/deps/parachain_staking-11563803aa3aa85d)
+
+running 6 tests
+test tests::follow ... ok
+test tests::follow_with_delegation ... ok
+test tests::follow_with_undelegation ... ok
+test tests::not_following ... ok
+test tests::already_following ... ok
+test tests::unfollow ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 63 filtered out; finished in 0.02s
+```
+
 ## Improvements
 
 Given that this is a minimal viable product, there are many ways this can improve:
 
-- If the delegator being followed is kicked, do we also kick the follower, or do we leave the follower where they are and detach from the collator?
+- Benchmarking 
+- Benchmarking, and unbounded Followers of storage could be a risk, could add a limit. 
+- More rigorous testing for edge cases. 
 
-- RPC module
 
