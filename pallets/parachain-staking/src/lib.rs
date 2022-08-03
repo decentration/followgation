@@ -16,7 +16,11 @@
 
 // If you feel like getting in touch with us, you can do so at info@botlabs.org
 
-//! # Parachain Staking
+//! # "Lazy Delegator" - Parachain Staking 
+//!
+//! This is an adaption of Kilt's parachain-staking LDPoS pallet, by Ramsey(Decentration). 
+//! 
+//! "To the TA, for the sake of the assignment i left some working out. They can be distinguished by 2x //."
 //!
 //! A simple staking pallet providing means of selecting a set of collators to
 //! become block authors based on their total backed stake. The main difference
@@ -49,6 +53,12 @@
 //! To join the set of delegators, an account must call `join_delegators` with
 //! stake >= `MinDelegatorStake`. There are also runtime methods for delegating
 //! additional collators and revoking delegations.
+//!
+//! Ramsey(Decentration) to be a "Lazy Gator", and join a set of delegators but
+//! with the additional benefit of following another delegators decisions automatically,
+//! an account must call `follow`. To unfollow but continue staking call `unfollow`. 
+//!
+//!
 //!
 //!
 //! - [`Config`]
@@ -626,7 +636,7 @@ pub mod pallet {
 		Twox64Concat,
 		T::AccountId,	
 		Vec<(T::AccountId, BalanceOf<T>)>,
-		ValueQuery, // Return the default value if there is nothing.  
+		ValueQuery, // Return the default value if there is nothing. This value will be an empty vector
 	>;
 
 	
@@ -1519,17 +1529,27 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let acc = ensure_signed(origin)?;
 			let collator = T::Lookup::lookup(collator)?;
-			Self::internal_join_delegators(acc, collator, amount)
+			let res = Self::internal_join_delegators(acc, collator, amount);
 
-			// I moved the logic here to fn internal_join_delegators(their_acc, collator, their_amount)
+			// I moved the original logic that was here to fn internal_join_delegators(their_acc, collator, their_amount)
 			
+			// the logic is here, but we have to choose an amount.
+			// currently, if we followed with 100 token, theses tokens will already be staked to others collators,
+			// so what do we use ? This should ba an improvement, maybe we dont give a fixed amount but a percentage of the delegator stake ?
+
+			//let followers = Followers::<T>::get(delegator);
+			//for (account, _) in followers {
+			//	let _ = Self::internal_join_delegators(account, collator.clone());
+			//}
 
 		}
 
-		/// Follow public function. 
-		/// Users can make an extrinsic call to choose a delegator that will automatically select and stake on their behalf. 
-		///
+		/// Follow (public function)
 		/// 
+		/// Users can make an extrinsic call to choose a delegator.
+		/// The follower's stake is distributed proportionally across the collator candidates that the delegator has chosen or will choose. 
+		///
+		/// Emits `Followed`
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
@@ -1570,8 +1590,6 @@ pub mod pallet {
 			// )
 
 			// ^^^ Actually, he can follow anyone.
-			
-		
 
 			// we have a delegation list, we need to create an empty Vec, then we are going to loop over the delegations, 
 			// and for each del we are going to have a recipient (delegating to) and 
@@ -1592,8 +1610,10 @@ pub mod pallet {
 					let percentage = staked_amount.saturating_mul(100u32.into()) / total;
 					let amount_to_stake = amount * (percentage / 100u32.into());
 					
-					let _ = Self::internal_join_delegators(acc.clone(), to, amount_to_stake);
-
+					// ignore errors and stake what was not an error. You can't delegate twice to the same candidate.
+					// If the lazy follower is already delegating to a candidate then that will create an error.
+					// So we ignore that one and distribute to the rest.
+					let _ = Self::internal_join_delegators(acc.clone(), to, amount_to_stake); 
 				}
 			}
 
@@ -1621,7 +1641,13 @@ pub mod pallet {
 
  
 
-		/// Unfollow
+		/// Unfollow (public function)
+		/// 
+		/// Users can make an extrinsic call to choose to unfollow delegator.
+		/// That means the users is no longer changed the by their selected delegators decisions. 
+		///
+		///Initially, I thought that the follow should also unstake its funds, but that is unecessary, the follower can be "unlazy" and keep staking its funds
+		/// Emits `Unfollowed`
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators(
 			T::MaxTopCandidates::get(),
 			T::MaxDelegatorsPerCollator::get()
@@ -1640,15 +1666,15 @@ pub mod pallet {
 				Error::<T>::NotFollowing
 			);
 
-			// if there's a delegation running, we undelegate. Though maybe we should keep delegating and just unfollow (hmm...)
+			// // if there's a delegation running, we undelegate. Though maybe we should keep delegating and just unfollow (hmm...)
 
-			//check if user has a delegator state, if not then we are not delegatng. 
+			// //check if user has a delegator state, if not then we are not delegatng. 
 		
  
 
 			// remove entry from storage
 			// Followers::<T>::get(&delegator).remove(&acc);
-			// retain allows us to find the tuple and remove if it is false 
+			// `retain()` allows us to find the tuple and remove if it is false 
 			Followers::<T>::mutate(&delegator, |vec| {
 				vec.retain(|(follower_acc, follower_amount)| {
 					!((*follower_acc == acc) && (*follower_amount == amount))
@@ -1661,15 +1687,12 @@ pub mod pallet {
 			Ok(())
 		}
 		
-		/*#[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
-			T::MaxTopCandidates::get(),
-			T::MaxDelegatorsPerCollator::get()
-		))]
-		*/
-
-
-		// pub fn force_unfollow_me(
-		// 	origin: OriginFor<T>,
+		// //[pallet::weight(<T as pallet::Config>::WeightInfo::join_delegators( // no current weight function Todo!()
+		//	T::MaxTopCandidates::get(),
+		//	T::MaxDelegatorsPerCollator::get()
+		// //))
+		// // pub fn force_unfollow_me(
+		// //	origin: OriginFor<T>,
 		// 	delegator: T::AccountId,
 		// 	amount: BalanceOf<T>,
 		// ) -> DispatchResultWithPostInfo {
@@ -1687,7 +1710,7 @@ pub mod pallet {
 		// 	ensure!()
 
 		// 	// check if the origin is being followed, they are not allowed to follow if this is the case. 
-		// 	ensure!()
+		// 	// ensure!()
 			
 		// 	// create an entry in the storage
 		// 	// create a mutate 
@@ -1897,7 +1920,7 @@ pub mod pallet {
 
 			// update follows of delegators as well
 			let followers = Followers::<T>::get(acc.clone());
-			for (account, _) in followers { // take every follower
+			for (account, _) in followers { // take every follower 
 				if let Some(state) = DelegatorState::<T>::get(&acc) {
 					for stake in state.delegations { // take every collator the delegator delegated to
 						let _ = Self::internal_revoke_delegation(account.clone(), stake.owner.clone()); //and remove the followers's delegations to each collator
@@ -1915,9 +1938,9 @@ pub mod pallet {
 			))
 			.into())
 			
-			// Self::internal_leave_delegators(acc)
+			// // Self::internal_leave_delegators(acc)
 
-			// for each follower, call internal_leave_delegators(their_acc)...
+			// // for each follower, call internal_leave_delegators(their_acc)...
 
 	
 		}
