@@ -4,15 +4,15 @@
 #VARIABLES
 export CHAIN_TYPE=parachain
 export RELAY_CHAIN_SPEC="../dev-specs/relay-specs/pop-art-new.json"
-export CHAIN_NAME="parachain-collator"
-export PROTOCOL_ID=kabocha
-export SPEC_NAME="pop-art-new.json"
-export RAWSPEC_NAME="pop-art-new-raw.json"
+export CHAIN_NAME="kilt-parachain"
+export PROTOCOL_ID=lazy-gator
+export SPEC_NAME="lazy-gator.json"
+export RAWSPEC_NAME="lazy-gator-raw.json"
 
 export PARA_ID=2010
 
-export GENESIS_HEAD='../genesiswasm/'"$PROTOCOL_ID"'-'"$PARA_ID"'-genesis'
-export GENESIS_WASM='../genesiswasm/'"$PROTOCOL_ID"'-'"$PARA_ID"'-wasm'
+export GENESIS_HEAD='../specs/genesiswasm/'"$PROTOCOL_ID"'-'"$PARA_ID"'-genesis'
+export GENESIS_WASM='../specs/genesiswasm/'"$PROTOCOL_ID"'-'"$PARA_ID"'-wasm'
 export BASE_PATH="/home/$USERNAME/$CHAIN_TYPE"
 
 
