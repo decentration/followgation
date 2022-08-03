@@ -9,19 +9,22 @@ You can see the explanation of my approach to delivering a "production ready" pr
 
 _Forked from [Kilt](https://github.com/KILTprotocol/kilt-node/)_
 
-## Quick start to test the perigrine parachain on Pop-Art live test net
+## Lazy Gator is running on a live relay testnet!
 
-First you need to have a local compile of the Pop-Art relay chain
+Currently Lazy Gator is a parathread/parachain on [Pop-Art](https://apps.decentration.org/?rpc=wss%3A%2F%2Fpopart1.jelliedowl.com#/parachains) with parachain-id 2010, check it out! :) 
 
-`git clone https://github.com/kabocha-network/relay-chain.git`
 
-`cd relay-chain`
+## Quick Start
+### Compile a parachain
 
-`git checkout v0.9.26-1`
+`git checkout followgation`
 
 `cargo build --release`
 
+You can follow the guidelines from [Substrate](https://docs.substrate.io/tutorials/connect-other-chains/local-relay/) to launch a local network, or...
 
+### Launch a node 
 
+`./build-spec-journey/4-launch-collator.sh`
 
 
