@@ -1,8 +1,8 @@
 # The Lazy Gator 🐊 (Polkadot Blockchain Academy)
 
-**Use at your own risk** and customise at will. 
+_**Use at your own risk** and customise at will._
 
-The Lazy Gator is a Limited -Delegated-Proof-of-Stake pallet forked from Kilt, but it also allows users to be a "Lazy Gator" and follow other delegators actions in a passively. (AKA "LLDPoS"). Customised by Ramsey(Decentration).
+The Lazy Gator is a Limited -Delegated-Proof-of-Stake pallet forked from Kilt, but it also allows users to be a "Lazy Gator" and follow other delegators actions passively. (AKA "LLDPoS"). Customised by Ramsey(Decentration).
 
 
 This repo customises a Kilt Node, specifically their parachain-staking Limited Delegated Proof-of-Stake (LDPoS) `pallets/parachain-staking` to have the added feature of a user being able to follow a delegator of their choice ,so that the selected delegator can select the candidate on their behalf. 
