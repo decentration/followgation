@@ -3928,8 +3928,9 @@ fn update_total_stake_no_collator_changes() {
 }
 
 
-// test for follow 
+
 #[test]
+// follow a delegator 
 fn follow() {
 	ExtBuilder::default()
 		.with_balances(vec![
@@ -3961,6 +3962,7 @@ fn follow() {
 }
 
 #[test]
+// unfollow from a delegator
 fn unfollow() {
 	ExtBuilder::default()
 		.with_balances(vec![
@@ -4036,7 +4038,6 @@ fn follow_with_delegation() {
 }
 
 #[test]
-
 //follow with a delegator already delegating 
 fn follow_with_undelegation() {
 	ExtBuilder::default()
@@ -4081,6 +4082,7 @@ fn follow_with_undelegation() {
 }
 
 #[test]
+// check AlreadyFollowing error works in a case where it should
 fn already_following() {
 	ExtBuilder::default()
 		.with_balances(vec![
@@ -4113,6 +4115,7 @@ fn already_following() {
 }
 
 #[test]
+// Check NotFollowing works in a case where it should.
 fn not_following() {
 	ExtBuilder::default()
 		.with_balances(vec![
@@ -4130,12 +4133,6 @@ fn not_following() {
 		.with_delegators(vec![(5, 2, 50), (6, 2, 50), (7, 3, 55), (8, 4, 55)])
 		.build()
 		.execute_with(|| {
-			assert_ok!(StakePallet::follow(Origin::signed(10), 5, 100));
-
-			assert_eq!(
-				StakePallet::followers(5),
-				vec!{(10, 100)}
-			);
 
 			assert_noop!(
 				StakePallet::unfollow(Origin::signed(3), 5, 100),

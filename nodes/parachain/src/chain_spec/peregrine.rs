@@ -46,7 +46,7 @@ pub fn make_dev_spec() -> Result<ChainSpec, String> {
 	Ok(ChainSpec::from_genesis(
 		"KILT Peregrine Develop",
 		"kilt_peregrine_dev",
-		ChainType::Local,
+		ChainType::Live,
 		move || {
 			testnet_genesis(
 				wasm,
