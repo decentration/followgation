@@ -1,6 +1,6 @@
 # Lazy Gator Pallet 🐊 (Polkadot Blockchain Academy)
 
-**use at your own risk** and customise at will!
+**Use at your own risk** and customise at will!
 
 This pallet enables users to follow delegators who stake their funds with collators. The followers can select how much they wish to stake, but the delegator that they follow selects the candidate (collator) for them. Please be aware this is a first version, and there are a lot of improvements that can be made to the following concept. 
 
@@ -158,7 +158,7 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 63 filtered out; fin
 
 Given that this is a minimal viable product, there are many ways this can improve:
 
-- In this current version, we are following in a minimal way, we could definitely follow better and in a smarter way. The main features is that we are copying the current selection and unstaking when the delegator unstakes. But we can do more! Such as:
+- In this current version, we are `follow`ing in a very simple way, we could definitely enable features that follow better, and in a smarter way. The main features is that we are copying the current selection and unstaking when the delegator unstakes. But we can do more! Such as:
   - Logic to handle when the delegator changes their selections, i.e. 
     - staking with more collators; 
     - unstaking from current collators; 
@@ -166,7 +166,6 @@ Given that this is a minimal viable product, there are many ways this can improv
     - decreasing stake. 
 - Smarter proportional distribution of lazy stake. Currently we just distribute evenly, but we could look at the distribution the delegator we are following is making, and replicate how their distribute it proportionally. 
 - Smarter ways to handle multiple multiple layers of follows. 
-- Considerations for how to handle when the delegator 
 - If the delegator unstakes, then we also undelegate, but there is no logic to re-delgate that stake. This would be a improvement. 
 - If the delegator we are following is already delegating to one or more collators, then all of our stake is distributed to those, then if the delegator adds a new stake, we can handle that in some way. 
 - If the user unstakes manually he still follows and delegator and must also unfollow. We can automate this. Having said that this could be a feature, where the delegator does the initial work, and then the lazy follower sculpts away what they don't want. 
