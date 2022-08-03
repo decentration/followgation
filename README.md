@@ -11,7 +11,7 @@ _Forked from [Kilt](https://github.com/KILTprotocol/kilt-node/)_
 
 ## Lazy Gator is running on a live relay testnet!
 
-Currently Lazy Gator is a parathread/parachain on [Pop-Art](https://apps.decentration.org/?rpc=wss%3A%2F%2Fpopart1.jelliedowl.com#/parachains) with parachain-id 2011, check it out! :) 
+Currently Lazy Gator is parathread/parachain on the community run live relay testnet [Pop-Art](https://apps.decentration.org/?rpc=wss%3A%2F%2Fpopart1.jelliedowl.com#/parachains) with parachain-id `2011`, check it out! :) 
 
 
 ## Quick Start
