@@ -6,8 +6,6 @@ This pallet enables users to follow delegators who stake their funds with collat
 
 The pallet customises Kilt's parachain-staking [pallet](https://github.com/decentration/followgator/tree/followgation/pallets/parachain-staking), but with the added `follow` features.
 
-Also can be found at `pallets/parachain-staking`.
-
 
 ## My Approach 
 The key factor in this assignment is that we have only a few days to deliver something that is "as close to production ready as possible" and display as much competence as we can about Substrate and Rust. 
