@@ -180,14 +180,16 @@ What stood out for me was `"As close to production ready as possible"`, and so I
 
 This assignment completes this section:
 
+```
 _Basic Direct Delegation Proof of Stake system:_
 - _A pallet which manages the DPoS System_
   - _Where one set of users can register to be a validator by providing a session key for Aura / BABE._
   - _Where any user can use their tokens to delegate (vote) for the set of validators._
   - _Where every N blocks, the current “winners” are selected, and Aura / BABE is updated._
   - **_As a bonus, try to support delegation chains, where you can back a delegator who themselves pick the validator._**
+```
 
-The bonus section looked, fun so i jumped straight to it!
+The bonus section looked fun, so i jumped straight to it!
 
 _"In all projects, you are free to use everything that you have learned from Substrate, including existing pallets. Feel free to use a pallet as-is, or tweak it slightly to fit your needs."_
 
