@@ -156,17 +156,17 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 63 filtered out; fin
 
 Given that this is a minimal viable product, there are many ways this can improve:
 
-- In this current version, we are `follow`ing in a very simple way, we could definitely enable features that follow better, and in a smarter way. The main features is that we are copying the current selection and unstaking when the delegator unstakes. But we can do more! Such as:
+- In this current version, we are `follow`ing in a very simple way, we could definitely enable features that follow better, and in a smarter way. The main features are that we are copying the current selection, and unstaking when the delegator unstakes. But we can do more! Such as:
   - Logic to handle when the delegator changes their selections, i.e. 
-    - staking with more collators; 
-    - unstaking from current collators; 
-    - increasing stake to current selection; 
-    - decreasing stake. 
+    - Staking with more collators; 
+    - Unstaking from current collators; 
+    - Increasing stake to current selection; 
+    - Decreasing stake. 
 - Smarter proportional distribution of lazy stake. Currently we just distribute evenly, but we could look at the distribution the delegator we are following is making, and replicate how their distribute it proportionally. 
-- Smarter ways to handle multiple multiple layers of follows. 
-- If the delegator unstakes, then we also undelegate, but there is no logic to re-delgate that stake. This would be a improvement. 
-- If the delegator we are following is already delegating to one or more collators, then all of our stake is distributed to those, then if the delegator adds a new stake, we can handle that in some way. 
-- If the user unstakes manually he still follows and delegator and must also unfollow. We can automate this. Having said that this could be a feature, where the delegator does the initial work, and then the lazy follower sculpts away what they don't want. 
+- Smarter ways to handle multiple layers of follows. 
+- If the delegator unstakes, then we also undelegate, but there is no logic to re-delegate that stake. This would be an improvement. 
+- If the delegator we are following is already delegating to one or more collators, then all of our stake is distributed to those, so if the delegator adds a new stake, we should handle that in some way. 
+- If the user unstakes manually he still follows and so must also unfollow. We can automate this. Having said that this could be a feature, where the delegator does the initial work, and then the lazy follower sculpts away what they don't want. 
 
 More improvements:
 - Benchmarking 
